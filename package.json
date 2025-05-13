@@ -1,0 +1,36 @@
+{
+	"name": "@markwylde/ailib",
+	"version": "1.0.0",
+	"description": "An AI library for calling OpenRouter in JavaScript",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"build": "tsc",
+		"prepublishOnly": "npm run build",
+		"lint": "biome check .",
+		"lint:fix": "biome check . --write",
+		"example:weather": "npm run build && tsx examples/weather.ts",
+		"example:conversation": "npm run build && tsx examples/conversation.ts",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"keywords": ["ai", "openai", "openrouter", "llm"],
+	"author": {
+		"name": "Mark Wylde",
+		"email": "mark@wylde.net",
+		"url": "https://markwylde.com"
+	},
+	"license": "MIT",
+	"type": "module",
+	"dependencies": {
+		"emittery": "^1.1.0",
+		"zod": "^3.24.4"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "1.9.4",
+		"@types/node": "^22.15.17",
+		"dotenv": "^16.5.0",
+		"typescript": "^5.8.3",
+		"tsx": "4.19.4"
+	},
+	"files": ["dist"]
+}

@@ -7,6 +7,11 @@ export interface Message {
 	content: string;
 	tool_call_id?: string;
 	tool_calls?: ToolCall[];
+	tokens?: number;
+	cost?: number;
+	totalTokens?: number;
+	totalCost?: number;
+	reasoning?: string;
 }
 
 export interface ToolCall {
@@ -25,18 +30,48 @@ export interface Tool {
 	handler: (args: Record<string, unknown>) => Promise<string>;
 }
 
+export interface ModelOptions {
+	temperature?: number;
+	max_tokens?: number;
+	seed?: number;
+	top_p?: number;
+	top_k?: number;
+	frequency_penalty?: number;
+	presence_penalty?: number;
+	repetition_penalty?: number;
+	min_p?: number;
+	top_a?: number;
+	reasoning?: {
+		enabled?: boolean;
+		include?: boolean;
+		include_output?: boolean;
+	};
+	usage?: {
+		include?: boolean;
+	};
+	provider?: {
+		[key: string]: unknown;
+	};
+	models?: string[];
+	transforms?: string[];
+	logit_bias?: Record<string, number>;
+	top_logprobs?: number;
+}
+
 export interface Provider {
 	generateMessage: (options: {
 		model: string;
 		messages: Message[];
 		tools?: Tool[];
 		apiKey: string;
+		modelOptions?: ModelOptions;
 	}) => AsyncGenerator<[string, Message]>;
 }
 
 export type EventTypes = {
 	state: "sent" | "receiving" | "completed" | "failed";
 	data: [string, Message];
+	reasoning: [string, Message];
 	end: undefined;
 	error: Error;
 };
@@ -54,6 +89,7 @@ export interface ThreadOptions {
 	messages?: Message[];
 	tools?: Tool[];
 	apiKey: string;
+	modelOptions?: ModelOptions;
 }
 
 export interface Thread {

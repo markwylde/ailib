@@ -29,25 +29,21 @@ async function main() {
 		provider: OpenRouter,
 		model,
 		messages: [{ role: "system", content: "You are a helpful assistant." }],
-		tools: [
-			{
-				name: "get-weather",
-				description: "Get the weather for a location",
-				parameters: z.object({
-					location: z.string(),
-				}),
-				handler: async ({ location }) => {
-					console.log(`Looking up weather for ${location}...`);
-					// In a real app, you'd call a weather API here
-					return `The weather in ${location} is sunny and 72°F.`;
-				},
-			},
-		],
 		apiKey: process.env.OPENROUTER_API_KEY || "your_api_key_here",
+		modelOptions: {
+			reasoning: {
+				enabled: true,
+				include: true,
+			},
+		},
 	});
 
 	console.log("Asking about weather in Tokyo...");
-	ai.messages.add({ role: "user", content: "What is the weather in Tokyo?" });
+	ai.messages.add({
+		role: "user",
+		content:
+			"Write two condense paragraphs about the climate and general weather in Tokyo.",
+	});
 
 	const stream = ai.messages.generate();
 
@@ -55,9 +51,11 @@ async function main() {
 		console.log(`Stream state: ${state}`);
 	});
 
+	stream.on("reasoning", ([chunk, message]) => {
+		console.log(`\nREASONING: "${chunk}"`);
+	});
+
 	stream.on("data", ([chunk, message]) => {
-		process.stdout.write(chunk);
-		// console.log(`Message so far: ${JSON.stringify(message, null, 2)}`);
 		process.stdout.write(chunk);
 	});
 

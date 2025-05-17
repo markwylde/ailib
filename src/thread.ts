@@ -9,7 +9,7 @@ import {
 } from "./types.js";
 
 export function createThread(options: ThreadOptions): Thread {
-	const { provider, model, apiKey } = options;
+	const { provider, model, apiKey, modelOptions } = options;
 
 	const messages: Message[] = [...(options.messages || [])];
 	const tools = options.tools || [];
@@ -43,6 +43,7 @@ export function createThread(options: ThreadOptions): Thread {
 							messages,
 							tools,
 							apiKey,
+							modelOptions,
 						});
 
 						emitter.emit("state", "receiving");
@@ -51,7 +52,17 @@ export function createThread(options: ThreadOptions): Thread {
 
 						for await (const [chunk, message] of stream) {
 							assistantMessage = message;
-							emitter.emit("data", [chunk, message]);
+
+							// Check if this is a reasoning chunk by looking for the special marker
+							if (chunk.startsWith("__REASONING__")) {
+								// Extract the actual reasoning content
+								const reasoningChunk = chunk.substring("__REASONING__".length);
+								// Emit the reasoning event
+								emitter.emit("reasoning", [reasoningChunk, message]);
+							} else {
+								// Regular content chunk
+								emitter.emit("data", [chunk, message]);
+							}
 						}
 
 						if (assistantMessage) {
@@ -100,6 +111,7 @@ export function createThread(options: ThreadOptions): Thread {
 									messages,
 									tools,
 									apiKey,
+									modelOptions,
 								});
 
 								let newAssistantMessage: Message | null = null;

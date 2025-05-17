@@ -10,6 +10,9 @@ A lightweight AI client library for Node.js that provides a simple interface for
 - TypeScript support with proper typing
 - Modern async/await API
 - Support for OpenRouter API (extensible for other providers)
+- Model pricing and cost tracking
+- Configurable model options
+- Support for model reasoning output
 
 ## Installation
 
@@ -41,6 +44,11 @@ const ai = createThread({
     }
   }],
   apiKey: process.env.OPENROUTER_API_KEY,
+  modelOptions: {
+    temperature: 0.7,
+    max_tokens: 1000,
+    // Add other model options as needed
+  },
 });
 
 // Add a message to the thread
@@ -56,6 +64,14 @@ stream.on('state', (state) => {
 
 stream.on('data', ([chunk, message]) => {
   console.log(chunk); // Stream text chunks as they arrive
+  // Access token and cost information
+  console.log(`Tokens used: ${message.tokens}`);
+  console.log(`Cost: $${message.cost}`);
+});
+
+// Listen for reasoning output (if supported by the model)
+stream.on('reasoning', ([reasoningChunk, message]) => {
+  console.log('Reasoning:', reasoningChunk);
 });
 
 // Listen for the stream to end
@@ -83,6 +99,32 @@ Creates a new conversation thread.
 - `messages`: Initial messages in the thread (optional)
 - `tools`: Tools available to the AI (optional)
 - `apiKey`: Your API key
+- `modelOptions`: Configuration options for the model (optional)
+
+#### Model Options
+
+The `modelOptions` object supports a wide range of parameters:
+
+```ts
+{
+  temperature?: number;
+  max_tokens?: number;
+  seed?: number;
+  top_p?: number;
+  top_k?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+  repetition_penalty?: number;
+  min_p?: number;
+  top_a?: number;
+  reasoning?: {
+    enabled?: boolean;
+    include?: boolean;
+    include_output?: boolean;
+  };
+  // Additional options
+}
+```
 
 #### Returns
 
@@ -100,7 +142,18 @@ The stream returned by `generate()` emits the following events:
 
 - `state`: Emitted when the stream state changes (`'sent'` | `'receiving'` | `'completed'` | `'failed'`)
 - `data`: Emitted when new content is received, provides the text chunk and the full message
+- `reasoning`: Emitted when reasoning content is received (if supported by the model)
 - `end`: Emitted when the stream ends
+
+### Message Properties
+
+Messages returned from generation include these additional properties:
+
+- `tokens`: Number of tokens used in the completion
+- `cost`: Cost of the completion in USD
+- `totalTokens`: Total tokens used (prompt + completion)
+- `totalCost`: Total cost of the interaction in USD
+- `reasoning`: Reasoning output from the model (if available)
 
 ## Tool Calling
 

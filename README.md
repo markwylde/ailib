@@ -180,6 +180,27 @@ const ai = createThread({
 
 See the [examples](./examples) directory for working examples.
 
+## Web Demo
+
+A web-based chat interface is available in the [webdemo](./webdemo) directory. This React application demonstrates the library's features in a user-friendly interface:
+
+- Real-time streaming responses
+- Collapsible reasoning tokens display
+- Markdown rendering with syntax highlighting
+- API key management
+- Responsive design
+- Local storage for chat history
+
+To run the web demo:
+
+```bash
+cd webdemo
+npm install
+npm run dev
+```
+
+Then open your browser to http://localhost:5173
+
 ## Requirements
 
 - Node.js 18 or higher

@@ -114,7 +114,7 @@ export const OpenRouter: Provider = {
 		const body: Record<string, unknown> = {
 			model,
 			messages: openRouterMessages,
-			tools: toolsFormatted,
+			tools: (tools?.length || 0) > 0 ? toolsFormatted : undefined,
 			stream: true,
 		};
 

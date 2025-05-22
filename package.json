@@ -1,6 +1,6 @@
 {
 	"name": "@markwylde/ailib",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"description": "An AI library for calling OpenRouter in JavaScript",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",

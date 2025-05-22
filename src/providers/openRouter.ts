@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 import { type Message, type Provider, Tool, ToolCall } from "../types.js";
 
 interface OpenRouterMessage {
@@ -96,16 +97,7 @@ export const OpenRouter: Provider = {
 				function: {
 					name: tool.name,
 					description: tool.description,
-					parameters: {
-						type: "object",
-						properties: Object.fromEntries(
-							fieldNames.map((key) => [
-								key,
-								{ type: "string", description: `Parameter: ${key}` },
-							]),
-						),
-						required: fieldNames,
-					},
+					parameters: zodToJsonSchema(tool.parameters),
 				},
 			};
 		});

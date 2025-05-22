@@ -28,14 +28,15 @@
 	"type": "module",
 	"dependencies": {
 		"emittery": "^1.1.0",
-		"zod": "^3.25.23"
+		"zod": "^3.25.23",
+		"zod-to-json-schema": "^3.24.5"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.9.4",
 		"@types/node": "^22.15.21",
 		"dotenv": "^16.5.0",
-		"typescript": "^5.8.3",
-		"tsx": "4.19.4"
+		"tsx": "4.19.4",
+		"typescript": "^5.8.3"
 	},
 	"files": [
 		"dist"

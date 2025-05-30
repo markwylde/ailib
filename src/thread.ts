@@ -95,7 +95,9 @@ export function createThread(options: ThreadOptions): Thread {
 
 						if (tool) {
 							try {
-								const args = JSON.parse(toolCall.function.arguments);
+								const args = !toolCall.function.arguments || toolCall.function.arguments === ""
+									? {}
+									: JSON.parse(toolCall.function.arguments);
 								const result = await tool.handler(args);
 
 								// Add tool response message

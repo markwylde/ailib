@@ -139,6 +139,8 @@ export const OpenRouter: Provider = {
 				body.logit_bias = modelOptions.logit_bias;
 			if (modelOptions.top_logprobs !== undefined)
 				body.top_logprobs = modelOptions.top_logprobs;
+			if (modelOptions.response_format !== undefined)
+				body.response_format = modelOptions.response_format;
 		}
 
 		const response = await fetch(

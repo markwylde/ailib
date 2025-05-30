@@ -21,13 +21,17 @@ You can run the examples using:
 
 ```bash
 # Basic weather tool example
-npm run example
+npm run example:weather
 
 # Interactive conversation with multiple tools
-npm run conversation
+npm run example:conversation
+
+# Structured JSON output example
+npm run example:structured-output
 ```
 
 ## Available examples
 
 - `weather.ts` - Demonstrates using AIlib with a simple weather tool
 - `conversation.ts` - Interactive CLI conversation with multiple tools (weather and flight search)
+- `structured-output.ts` - Shows how to get structured JSON responses using response_format

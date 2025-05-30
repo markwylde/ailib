@@ -11,6 +11,7 @@
 		"lint:fix": "biome check . --write",
 		"example:weather": "npm run build && tsx examples/weather.ts",
 		"example:conversation": "npm run build && tsx examples/conversation.ts",
+		"example:structured-output": "npm run build && tsx examples/structured-output.ts",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"keywords": [
@@ -28,12 +29,13 @@
 	"type": "module",
 	"dependencies": {
 		"emittery": "^1.1.0",
-		"zod": "^3.25.23",
+		"jsonrepair": "^3.12.0",
+		"zod": "^3.25.41",
 		"zod-to-json-schema": "^3.24.5"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.9.4",
-		"@types/node": "^22.15.21",
+		"@types/node": "^22.15.27",
 		"dotenv": "^16.5.0",
 		"tsx": "4.19.4",
 		"typescript": "^5.8.3"

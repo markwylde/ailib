@@ -30,6 +30,20 @@ export interface Tool {
 	handler: (args: Record<string, unknown>) => Promise<string>;
 }
 
+export interface ResponseFormat {
+	type: "json_schema";
+	json_schema: {
+		name: string;
+		strict?: boolean;
+		schema: {
+			type: "object";
+			properties: Record<string, unknown>;
+			required?: string[];
+			additionalProperties?: boolean;
+		};
+	};
+}
+
 export interface ModelOptions {
 	temperature?: number;
 	max_tokens?: number;
@@ -56,6 +70,7 @@ export interface ModelOptions {
 	transforms?: string[];
 	logit_bias?: Record<string, number>;
 	top_logprobs?: number;
+	response_format?: ResponseFormat;
 }
 
 export interface Provider {

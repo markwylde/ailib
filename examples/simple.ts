@@ -18,7 +18,7 @@ async function main() {
 	// const model = "qwen/qwen3-30b-a3b";
 	// const model = "meta-llama/llama-3/.3-70b-instruct:free";
 	// const model = "google/gemini-flash-1.5-8b";
-	const model = "google/gemini-2.5-flash-preview:thinking";
+	const model = "qwen/qwen3-32b";
 
 	console.log(`Creating thread with model: ${model}`);
 	console.log(
@@ -35,6 +35,9 @@ async function main() {
 				enabled: true,
 				include: true,
 			},
+			provider: {
+				only: ["Cerebras"]
+			}
 		},
 	});
 
@@ -52,7 +55,7 @@ async function main() {
 	});
 
 	stream.on("reasoning", ([chunk, message]) => {
-		console.log(`\nREASONING: "${chunk}"`);
+		process.stdout.write(chunk);
 	});
 
 	stream.on("data", ([chunk, message]) => {

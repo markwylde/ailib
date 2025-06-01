@@ -64,7 +64,17 @@ export interface ModelOptions {
 		include?: boolean;
 	};
 	provider?: {
-		[key: string]: unknown;
+		order?: string[];
+		allow_fallbacks?: boolean;
+		require_parameters?: boolean;
+		data_collection?: "allow" | "deny";
+		only?: string[];
+		ignore?: string[];
+		quantizations?: string[];
+		sort?: "price" | "throughput";
+		max_price?: {
+			[key: string]: unknown;
+		};
 	};
 	models?: string[];
 	transforms?: string[];

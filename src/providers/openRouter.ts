@@ -1,6 +1,37 @@
 import type { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { type Message, type Provider, Tool, ToolCall } from "../types.js";
+import type { Message, Provider } from "../types.js";
+
+type JsonSchemaLike = {
+	$schema?: unknown;
+	additionalProperties?: unknown;
+	minimum?: unknown;
+	maximum?: unknown;
+	minLength?: unknown;
+	maxLength?: unknown;
+	pattern?: unknown;
+	format?: unknown;
+	enum?: unknown;
+	const?: unknown;
+	multipleOf?: unknown;
+	exclusiveMinimum?: unknown;
+	exclusiveMaximum?: unknown;
+	minItems?: unknown;
+	maxItems?: unknown;
+	uniqueItems?: unknown;
+	minProperties?: unknown;
+	maxProperties?: unknown;
+	dependencies?: unknown;
+	patternProperties?: unknown;
+	allOf?: unknown;
+	anyOf?: unknown;
+	oneOf?: unknown;
+	not?: unknown;
+	properties?: Record<string, JsonSchemaLike>;
+	items?: JsonSchemaLike;
+	required?: string[];
+	[key: string]: unknown;
+};
 
 interface OpenRouterMessage {
 	role: string;
@@ -88,16 +119,82 @@ export const OpenRouter: Provider = {
 			// Extract shape from the Zod object type
 			const shape = zodObj._def?.shape ? zodObj._def.shape : {};
 
-			// Get field names
+			// Get field names (currently not used; kept for clarity)
 			const fields = typeof shape === "function" ? shape() : shape;
-			const fieldNames = Object.keys(fields || {});
+			const _fieldNames = Object.keys(fields || {});
+
+			// Convert to JSON schema
+			const jsonSchema = zodToJsonSchema(tool.parameters) as JsonSchemaLike;
+
+			// Check if we're using Cerebras provider with strict mode
+			const providerList = modelOptions?.provider?.only || [];
+			const isCerebras = providerList.some(
+				(p) => p.toLowerCase() === "cerebras",
+			);
+
+			if (isCerebras) {
+				// Cerebras has strict requirements:
+				// 1. ALL fields must be in the required array
+				// 2. No $schema field allowed
+				// 3. No additionalProperties field allowed (even in nested objects)
+
+				// Recursively remove unsupported fields
+				const removeUnsupportedFields = (obj: JsonSchemaLike) => {
+					if (obj && typeof obj === "object") {
+						// Remove fields that Cerebras doesn't support
+						delete obj.$schema;
+						delete obj.additionalProperties;
+						delete obj.minimum;
+						delete obj.maximum;
+						delete obj.minLength;
+						delete obj.maxLength;
+						delete obj.pattern;
+						delete obj.format;
+						delete obj.enum;
+						delete obj.const;
+						delete obj.multipleOf;
+						delete obj.exclusiveMinimum;
+						delete obj.exclusiveMaximum;
+						delete obj.minItems;
+						delete obj.maxItems;
+						delete obj.uniqueItems;
+						delete obj.minProperties;
+						delete obj.maxProperties;
+						delete obj.dependencies;
+						delete obj.patternProperties;
+						delete obj.allOf;
+						delete obj.anyOf;
+						delete obj.oneOf;
+						delete obj.not;
+
+						// Process nested objects
+						if (obj.properties) {
+							for (const prop of Object.values(obj.properties)) {
+								removeUnsupportedFields(prop);
+							}
+						}
+
+						// Process array items
+						if (obj.items) {
+							removeUnsupportedFields(obj.items);
+						}
+					}
+				};
+
+				removeUnsupportedFields(jsonSchema);
+
+				// Make all fields required
+				if (jsonSchema.properties) {
+					jsonSchema.required = Object.keys(jsonSchema.properties);
+				}
+			}
 
 			return {
 				type: "function",
 				function: {
 					name: tool.name,
 					description: tool.description,
-					parameters: zodToJsonSchema(tool.parameters),
+					parameters: jsonSchema,
 				},
 			};
 		});
@@ -295,7 +392,7 @@ export const OpenRouter: Provider = {
 								yield ["", assistantMessage];
 							}
 						}
-					} catch (e) {
+					} catch (_e) {
 						// Silently skip malformed JSON
 					}
 				}

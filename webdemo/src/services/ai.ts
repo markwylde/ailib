@@ -1,7 +1,7 @@
 import {
 	type Message as AiMessage,
-	OpenRouter,
 	createThread,
+	OpenRouter,
 } from "@markwylde/ailib";
 
 // Get the API key from localStorage or environment variables
@@ -21,7 +21,11 @@ export interface ChatMessage {
 
 // Initialize messages with a system message
 let messagesCache: ChatMessage[] = [
-	{ role: "system", content: "You are a helpful assistant.", id: crypto.randomUUID() },
+	{
+		role: "system",
+		content: "You are a helpful assistant.",
+		id: crypto.randomUUID(),
+	},
 ];
 
 // Convert ailib Message to our ChatMessage format

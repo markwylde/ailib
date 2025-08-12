@@ -1,6 +1,6 @@
 import * as dotenv from "dotenv";
 import { z } from "zod";
-import { OpenRouter, createThread } from "../src/index.js";
+import { createThread, OpenRouter } from "../src/index.js";
 
 dotenv.config();
 
@@ -58,7 +58,7 @@ async function main() {
 		if (state === "failed") console.log("\nResponse failed");
 	});
 
-	stream.on("data", ([chunk, message]) => {
+	stream.on("data", ([chunk, _message]) => {
 		// Print chunks as they arrive
 		process.stdout.write(chunk);
 	});
@@ -72,7 +72,7 @@ async function main() {
 
 		// Show all messages in the conversation
 		console.log("\nConversation history:");
-		ai.messages.list.forEach((message, i) => {
+		ai.messages.list.forEach((message, _i) => {
 			console.log(`\n[${message.role}]:`);
 			console.log(message.content);
 

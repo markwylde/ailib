@@ -1,6 +1,6 @@
 import * as dotenv from "dotenv";
 import { z } from "zod";
-import { OpenRouter, createThread } from "../src/index.js";
+import { createThread, OpenRouter } from "../src/index.js";
 
 dotenv.config();
 
@@ -46,7 +46,7 @@ async function main() {
 		console.log(`Stream state: ${state}`);
 	});
 
-	stream.on("data", ([chunk, message]) => {
+	stream.on("data", ([chunk, _message]) => {
 		process.stdout.write(chunk);
 	});
 

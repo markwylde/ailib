@@ -1,6 +1,6 @@
 import * as dotenv from "dotenv";
-import { z } from "zod";
-import { OpenRouter, createThread } from "../src/index.js";
+// Removed unused import
+import { createThread, OpenRouter } from "../src/index.js";
 
 dotenv.config();
 
@@ -36,8 +36,8 @@ async function main() {
 				include: true,
 			},
 			provider: {
-				only: ["Cerebras"]
-			}
+				only: ["Cerebras"],
+			},
 		},
 	});
 
@@ -54,11 +54,11 @@ async function main() {
 		console.log(`Stream state: ${state}`);
 	});
 
-	stream.on("reasoning", ([chunk, message]) => {
+	stream.on("reasoning", ([chunk, _message]) => {
 		process.stdout.write(chunk);
 	});
 
-	stream.on("data", ([chunk, message]) => {
+	stream.on("data", ([chunk, _message]) => {
 		process.stdout.write(chunk);
 	});
 

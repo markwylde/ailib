@@ -36,8 +36,8 @@ async function main() {
 				include: true,
 			},
 			provider: {
-				only: ["Cerebras"]
-			}
+				only: ["Cerebras"],
+			},
 		},
 	});
 

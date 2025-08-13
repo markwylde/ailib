@@ -8,7 +8,12 @@ import rehypeSlug from "rehype-slug";
 import remarkGfm from "remark-gfm";
 import "highlight.js/styles/atom-one-dark.css";
 import ApiKeyForm from "./components/ApiKeyForm";
-import { type ChatMessage, getMessages, sendMessage } from "./services/ai";
+import {
+	type ChatMessage,
+	cancel,
+	getMessages,
+	sendMessage,
+} from "./services/ai";
 
 function App() {
 	const [inputText, setInputText] = useState("");
@@ -389,9 +394,9 @@ function App() {
 					<div className="message assistant">
 						<div className="message-content">
 							<div className="loading-indicator">
-								<div className="dot"></div>
-								<div className="dot"></div>
-								<div className="dot"></div>
+								<div className="dot" />
+								<div className="dot" />
+								<div className="dot" />
 							</div>
 						</div>
 					</div>
@@ -408,9 +413,15 @@ function App() {
 					placeholder="Type your message here..."
 					disabled={isLoading}
 				/>
-				<button type="submit" disabled={isLoading || !inputText.trim()}>
-					Send
-				</button>
+				{isLoading ? (
+					<button type="button" onClick={cancel}>
+						Cancel
+					</button>
+				) : (
+					<button type="submit" disabled={!inputText.trim()}>
+						Send
+					</button>
+				)}
 			</form>
 		</div>
 	);

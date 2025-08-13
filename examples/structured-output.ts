@@ -2,10 +2,15 @@ import { jsonrepair } from "jsonrepair";
 import { OpenRouter } from "../src/providers/openRouter.js";
 import { createThread } from "../src/thread.js";
 
+const apiKey = process.env.OPENROUTER_API_KEY;
+if (!apiKey) {
+	throw new Error("OPENROUTER_API_KEY is not set in the environment");
+}
+
 const thread = createThread({
 	provider: OpenRouter,
 	model: "google/gemini-2.0-flash-001",
-	apiKey: process.env.OPENROUTER_API_KEY || "",
+	apiKey,
 	messages: [
 		{
 			role: "system",

@@ -33,8 +33,10 @@ export function createThread(options: ThreadOptions): Thread {
 
 			generate() {
 				const emitter = new Emittery<EventTypes>();
+				const controller = new AbortController();
 
 				const promise = (async () => {
+					let assistantMessage: Message | null = null;
 					try {
 						emitter.emit("state", "sent");
 
@@ -44,11 +46,10 @@ export function createThread(options: ThreadOptions): Thread {
 							tools,
 							apiKey,
 							modelOptions,
+							signal: controller.signal,
 						});
 
 						emitter.emit("state", "receiving");
-
-						let assistantMessage: Message | null = null;
 
 						for await (const [chunk, message] of stream) {
 							assistantMessage = message;
@@ -80,6 +81,23 @@ export function createThread(options: ThreadOptions): Thread {
 						emitter.emit("state", "completed");
 						emitter.emit("end", undefined);
 					} catch (error) {
+						// If this was an intentional cancel/abort, treat it as a graceful end
+						const errAny = error as { name?: string; message?: string };
+						const isAbort =
+							errAny?.name === "AbortError" ||
+							(typeof errAny?.message === "string" &&
+								/abort/i.test(errAny.message));
+
+						if (isAbort) {
+							// Persist any partial assistant message we have so far
+							if (assistantMessage) {
+								messages.push(assistantMessage);
+							}
+							emitter.emit("state", "completed");
+							emitter.emit("end", undefined);
+							return;
+						}
+
 						emitter.emit("state", "failed");
 						emitter.emit(
 							"error",
@@ -95,9 +113,11 @@ export function createThread(options: ThreadOptions): Thread {
 
 						if (tool) {
 							try {
-								const args = !toolCall.function.arguments || toolCall.function.arguments === ""
-									? {}
-									: JSON.parse(toolCall.function.arguments);
+								const args =
+									!toolCall.function.arguments ||
+									toolCall.function.arguments === ""
+										? {}
+										: JSON.parse(toolCall.function.arguments);
 								const result = await tool.handler(args);
 
 								// Add tool response message
@@ -114,6 +134,7 @@ export function createThread(options: ThreadOptions): Thread {
 									tools,
 									apiKey,
 									modelOptions,
+									signal: controller.signal,
 								});
 
 								let newAssistantMessage: Message | null = null;
@@ -135,6 +156,11 @@ export function createThread(options: ThreadOptions): Thread {
 									}
 								}
 							} catch (error) {
+								// Treat AbortError during tool processing as a clean cancellation
+								if (error instanceof Error && error.name === "AbortError") {
+									return; // stop processing further tool calls quietly
+								}
+
 								console.error(`Error executing tool ${tool.name}:`, error);
 								messages.push({
 									role: "tool",
@@ -154,6 +180,11 @@ export function createThread(options: ThreadOptions): Thread {
 					) => {
 						emitter.on(event, listener);
 						return generate;
+					},
+					cancel: () => {
+						try {
+							controller.abort();
+						} catch {}
 					},
 				});
 

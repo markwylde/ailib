@@ -90,6 +90,8 @@ export interface Provider {
 		tools?: Tool[];
 		apiKey: string;
 		modelOptions?: ModelOptions;
+		// Optional abort signal to cancel upstream request/stream
+		signal?: AbortSignal;
 	}) => AsyncGenerator<[string, Message]>;
 }
 
@@ -106,6 +108,8 @@ export interface StreamEvents {
 		event: K,
 		listener: (data: EventTypes[K]) => void,
 	): this;
+	// Cancel the in-flight generation (idempotent)
+	cancel(): void;
 }
 
 export interface ThreadOptions {

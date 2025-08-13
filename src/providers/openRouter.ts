@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { type Message, type Provider, Tool, ToolCall } from "../types.js";
+import { type Message, type Provider, type Tool, ToolCall } from "../types.js";
 
 interface OpenRouterMessage {
 	role: string;
@@ -64,7 +64,7 @@ export async function getModelPricing(
 
 export const OpenRouter: Provider = {
 	generateMessage: async function* (options) {
-		const { model, messages, tools, apiKey, modelOptions } = options;
+		const { model, messages, tools, apiKey, modelOptions, signal } = options;
 		let totalTokens = 0;
 		let totalCost = 0;
 		let promptTokens = 0;
@@ -72,14 +72,16 @@ export const OpenRouter: Provider = {
 
 		const pricing = await getModelPricing(model, apiKey);
 
-		const openRouterMessages: OpenRouterMessage[] = messages.map((message) => ({
-			role: message.role,
-			content: message.content,
-			tool_call_id: message.tool_call_id,
-			tool_calls: message.tool_calls,
-		}));
+		const openRouterMessages: OpenRouterMessage[] = messages.map(
+			(message: Message) => ({
+				role: message.role,
+				content: message.content,
+				tool_call_id: message.tool_call_id,
+				tool_calls: message.tool_calls,
+			}),
+		);
 
-		const toolsFormatted = tools?.map((tool) => {
+		const toolsFormatted = tools?.map((tool: Tool) => {
 			// For OpenRouter, we need to transform the Zod schema to JSON Schema
 			// This is a simple approach for JSON schema generation
 			// Access the Zod object using type assertion
@@ -154,6 +156,7 @@ export const OpenRouter: Provider = {
 					"X-Title": "@markwylde/ailib",
 				},
 				body: JSON.stringify(body),
+				signal,
 			},
 		);
 
@@ -177,6 +180,18 @@ export const OpenRouter: Provider = {
 			totalTokens: 0,
 			totalCost: 0,
 		};
+
+		const onAbort = () => {
+			try {
+				reader.cancel();
+			} catch {}
+		};
+		if (signal) {
+			if ((signal as AbortSignal).aborted) onAbort();
+			(signal as AbortSignal).addEventListener("abort", onAbort, {
+				once: true,
+			});
+		}
 
 		try {
 			while (true) {
@@ -301,7 +316,10 @@ export const OpenRouter: Provider = {
 				}
 			}
 		} finally {
-			reader.releaseLock();
+			if (signal) (signal as AbortSignal).removeEventListener("abort", onAbort);
+			try {
+				reader.releaseLock();
+			} catch {}
 		}
 
 		// Make sure the final message has the token usage and cost

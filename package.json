@@ -1,6 +1,6 @@
 {
 	"name": "@markwylde/ailib",
-	"version": "1.5.0",
+	"version": "1.5.1",
 	"description": "An AI library for calling OpenRouter in JavaScript",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
@@ -17,7 +17,12 @@
 		"example:structured-output": "npm run build && tsx examples/structured-output.ts",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
-	"keywords": ["ai", "openai", "openrouter", "llm"],
+	"keywords": [
+		"ai",
+		"openai",
+		"openrouter",
+		"llm"
+	],
 	"author": {
 		"name": "Mark Wylde",
 		"email": "mark@wylde.net",
@@ -38,5 +43,7 @@
 		"tsx": "4.20.4",
 		"typescript": "^5.9.2"
 	},
-	"files": ["dist"]
+	"files": [
+		"dist"
+	]
 }

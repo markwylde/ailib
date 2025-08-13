@@ -1,5 +1,4 @@
 import { jsonrepair } from "jsonrepair";
-import z from "zod";
 import { OpenRouter } from "../src/providers/openRouter.js";
 import { createThread } from "../src/thread.js";
 
@@ -61,7 +60,7 @@ thread.messages.add({
 
 const generation = thread.messages.generate();
 
-generation.on("data", ([chunk, message]) => {
+generation.on("data", ([chunk, _message]) => {
 	process.stdout.write(chunk);
 });
 
@@ -75,7 +74,7 @@ generation.on("end", () => {
 		const parsed = JSON.parse(lastMessage.content);
 		console.log("Parsed JSON:", parsed);
 		console.log("✅ Valid JSON structure!");
-	} catch (error) {
+	} catch (_error) {
 		console.log("Response is not valid JSON, attempting repair...");
 		try {
 			const repaired = jsonrepair(lastMessage.content);

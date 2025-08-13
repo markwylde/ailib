@@ -1,7 +1,7 @@
 import {
 	type Message as AiMessage,
-	OpenRouter,
 	createThread,
+	OpenRouter,
 } from "@markwylde/ailib";
 
 // Get the API key from localStorage or environment variables

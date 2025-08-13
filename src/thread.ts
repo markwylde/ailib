@@ -1,11 +1,10 @@
 import Emittery from "emittery";
-import {
-	type EventTypes,
-	type Message,
-	StreamEvents,
-	type Thread,
-	type ThreadOptions,
-	type ToolCall,
+import type {
+	EventTypes,
+	Message,
+	Thread,
+	ThreadOptions,
+	ToolCall,
 } from "./types.js";
 
 export function createThread(options: ThreadOptions): Thread {
@@ -141,7 +140,19 @@ export function createThread(options: ThreadOptions): Thread {
 
 								for await (const [chunk, message] of newStream) {
 									newAssistantMessage = message;
-									emitter.emit("data", [chunk, message]);
+
+									// Mirror top-level handling: route reasoning chunks
+									if (
+										typeof chunk === "string" &&
+										chunk.startsWith("__REASONING__")
+									) {
+										const reasoningChunk = chunk.substring(
+											"__REASONING__".length,
+										);
+										emitter.emit("reasoning", [reasoningChunk, message]);
+									} else {
+										emitter.emit("data", [chunk, message]);
+									}
 								}
 
 								if (newAssistantMessage) {

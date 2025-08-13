@@ -54,17 +54,12 @@ function App() {
 		}
 	}, [apiKey]);
 
-	useEffect(() => {
-		scrollToBottom();
-		// Reference dependencies to satisfy exhaustive-deps rule
-		void messages.length;
-		void currentAssistantMessage;
-		void currentReasoning;
-	}, [messages, currentAssistantMessage, currentReasoning]);
+	const scrollTrigger = `${messages.length}-${currentAssistantMessage.length}-${currentReasoning.length}`;
 
-	const scrollToBottom = () => {
+	useEffect(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-	};
+		void scrollTrigger;
+	}, [scrollTrigger]);
 
 	const handleApiKeySubmit = (key: string) => {
 		localStorage.setItem("openrouter_api_key", key);

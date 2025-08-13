@@ -7,19 +7,17 @@
 	"scripts": {
 		"build": "tsc",
 		"prepublishOnly": "npm run build",
-		"lint": "biome check .",
-		"lint:fix": "biome check . --write",
+		"check": "biome check .",
+		"check:fix": "biome check . --write",
+		"lint": "biome lint .",
+		"lint:fix": "biome lint . --write",
+		"tidy": "npm run check:fix && npm run lint:fix",
 		"example:weather": "npm run build && tsx examples/weather.ts",
 		"example:conversation": "npm run build && tsx examples/conversation.ts",
 		"example:structured-output": "npm run build && tsx examples/structured-output.ts",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
-	"keywords": [
-		"ai",
-		"openai",
-		"openrouter",
-		"llm"
-	],
+	"keywords": ["ai", "openai", "openrouter", "llm"],
 	"author": {
 		"name": "Mark Wylde",
 		"email": "mark@wylde.net",
@@ -40,7 +38,5 @@
 		"tsx": "4.19.4",
 		"typescript": "^5.8.3"
 	},
-	"files": [
-		"dist"
-	]
+	"files": ["dist"]
 }

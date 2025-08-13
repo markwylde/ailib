@@ -21,7 +21,11 @@ export interface ChatMessage {
 
 // Initialize messages with a system message
 let messagesCache: ChatMessage[] = [
-	{ role: "system", content: "You are a helpful assistant.", id: crypto.randomUUID() },
+	{
+		role: "system",
+		content: "You are a helpful assistant.",
+		id: crypto.randomUUID(),
+	},
 ];
 
 // Convert ailib Message to our ChatMessage format
@@ -40,7 +44,7 @@ const createThreadInstance = () => {
 
 	return createThread({
 		provider: OpenRouter,
-		model: "deepseek/deepseek-r1", // Model that supports reasoning
+		model: "qwen/qwen3-235b-a22b-thinking-2507", // Model that supports reasoning
 		apiKey,
 		// Important: Pass the full message objects including reasoning
 		messages: messagesCache.map((msg) => ({
@@ -60,6 +64,13 @@ const createThreadInstance = () => {
 
 // Create initial thread
 let thread = createThreadInstance();
+let inFlight: (Promise<void> & { cancel: () => void }) | null = null;
+
+export const cancel = () => {
+	try {
+		inFlight?.cancel();
+	} catch {}
+};
 
 export const sendMessage = async (
 	userMessage: string,
@@ -86,6 +97,7 @@ export const sendMessage = async (
 
 	// Generate response
 	const generate = thread.messages.generate();
+	inFlight = generate;
 
 	// Set up event listeners for regular content
 	generate.on("data", ([chunk]) => {
@@ -98,7 +110,7 @@ export const sendMessage = async (
 	});
 
 	try {
-		// Wait for completion
+		// Wait for completion (cancel resolves gracefully)
 		await generate;
 
 		// Update messages cache with latest messages including reasoning
@@ -113,6 +125,8 @@ export const sendMessage = async (
 	} catch (error) {
 		console.error("Error generating message:", error);
 		throw error;
+	} finally {
+		inFlight = null;
 	}
 };
 

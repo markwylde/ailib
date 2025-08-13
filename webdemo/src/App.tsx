@@ -8,7 +8,12 @@ import rehypeSlug from "rehype-slug";
 import remarkGfm from "remark-gfm";
 import "highlight.js/styles/atom-one-dark.css";
 import ApiKeyForm from "./components/ApiKeyForm";
-import { type ChatMessage, getMessages, sendMessage } from "./services/ai";
+import {
+	type ChatMessage,
+	cancel,
+	getMessages,
+	sendMessage,
+} from "./services/ai";
 
 function App() {
 	const [inputText, setInputText] = useState("");
@@ -51,6 +56,10 @@ function App() {
 
 	useEffect(() => {
 		scrollToBottom();
+		// Reference dependencies to satisfy exhaustive-deps rule
+		void messages.length;
+		void currentAssistantMessage;
+		void currentReasoning;
 	}, [messages, currentAssistantMessage, currentReasoning]);
 
 	const scrollToBottom = () => {
@@ -85,7 +94,7 @@ function App() {
 		const userMessage: ChatMessage = {
 			role: "user",
 			content: inputText,
-			id: crypto.randomUUID()
+			id: crypto.randomUUID(),
 		};
 		setMessages((prevMessages) => [...prevMessages, userMessage]);
 		setInputText("");
@@ -162,7 +171,13 @@ function App() {
 			]}
 			components={{
 				// Override how list items render
-				li: ({ className, ...props }: { className?: string; ordered?: boolean } & React.ComponentPropsWithoutRef<"li">) => {
+				li: ({
+					className,
+					...props
+				}: {
+					className?: string;
+					ordered?: boolean;
+				} & React.ComponentPropsWithoutRef<"li">) => {
 					const listItemClass = `custom-list-item ${props.ordered ? "ordered" : "unordered"} ${className || ""}`;
 
 					if (props.ordered) {
@@ -188,7 +203,11 @@ function App() {
 				// Override h3 for proper styling
 				h3: ({ ...props }) => <h3 className="custom-h3" {...props} />,
 				// Better code handling
-				code: ({ className, children, ...props }: React.ComponentPropsWithoutRef<"code">) => {
+				code: ({
+					className,
+					children,
+					...props
+				}: React.ComponentPropsWithoutRef<"code">) => {
 					return (
 						<code className={className} {...props}>
 							{children}
@@ -267,21 +286,15 @@ function App() {
 					<div key={message.id} className={`message ${message.role}`}>
 						{message.role === "assistant" && (
 							<div className="reasoning-wrapper">
-								<div
+								<button
+									type="button"
 									className="reasoning-toggle"
 									onClick={() => toggleReasoning(messages.indexOf(message))}
-									onKeyDown={(e) => {
-										if (e.key === "Enter" || e.key === " ") {
-											toggleReasoning(messages.indexOf(message));
-										}
-									}}
-									role="button"
-									tabIndex={0}
 								>
 									{isReasoningCollapsed(messages.indexOf(message))
 										? "▶ Show Reasoning"
 										: "▼ Hide Reasoning"}
-								</div>
+								</button>
 								{!isReasoningCollapsed(messages.indexOf(message)) && (
 									<div className="reasoning-content">
 										{isMarkdownEnabled ? (
@@ -304,7 +317,11 @@ function App() {
 										className="edit-textarea"
 									/>
 									<div className="edit-buttons">
-										<button type="button" onClick={handleSaveEdit} className="save-button">
+										<button
+											type="button"
+											onClick={handleSaveEdit}
+											className="save-button"
+										>
 											Save
 										</button>
 										<button
@@ -327,7 +344,9 @@ function App() {
 										<button
 											type="button"
 											className="edit-button"
-											onClick={() => handleEditMessage(messages.indexOf(message))}
+											onClick={() =>
+												handleEditMessage(messages.indexOf(message))
+											}
 										>
 											Edit
 										</button>
@@ -342,21 +361,15 @@ function App() {
 					<div className="message assistant">
 						{currentReasoning || currentAssistantMessage ? (
 							<div className="reasoning-wrapper">
-								<div
+								<button
+									type="button"
 									className="reasoning-toggle"
 									onClick={toggleCurrentReasoning}
-									onKeyDown={(e) => {
-										if (e.key === "Enter" || e.key === " ") {
-											toggleCurrentReasoning();
-										}
-									}}
-									role="button"
-									tabIndex={0}
 								>
 									{isCurrentReasoningCollapsed
 										? "▶ Show Reasoning"
 										: "▼ Hide Reasoning"}
-								</div>
+								</button>
 								{!isCurrentReasoningCollapsed && (
 									<div className="reasoning-content">
 										{isMarkdownEnabled ? (
@@ -386,9 +399,9 @@ function App() {
 					<div className="message assistant">
 						<div className="message-content">
 							<div className="loading-indicator">
-								<div className="dot"></div>
-								<div className="dot"></div>
-								<div className="dot"></div>
+								<div className="dot" />
+								<div className="dot" />
+								<div className="dot" />
 							</div>
 						</div>
 					</div>
@@ -405,9 +418,15 @@ function App() {
 					placeholder="Type your message here..."
 					disabled={isLoading}
 				/>
-				<button type="submit" disabled={isLoading || !inputText.trim()}>
-					Send
-				</button>
+				{isLoading ? (
+					<button type="button" onClick={cancel}>
+						Cancel
+					</button>
+				) : (
+					<button type="submit" disabled={!inputText.trim()}>
+						Send
+					</button>
+				)}
 			</form>
 		</div>
 	);

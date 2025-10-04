@@ -1,4 +1,4 @@
-import { zodToJsonSchema } from "zod-to-json-schema";
+import * as z from "zod";
 import type { Message, Provider, Tool } from "../types.js";
 
 type JsonSchemaLike = {
@@ -64,7 +64,7 @@ export const Ollama: Provider = {
 		);
 
 		const toolsFormatted = tools?.map((tool: Tool) => {
-			const jsonSchema = zodToJsonSchema(tool.parameters) as JsonSchemaLike;
+			const jsonSchema = z.toJSONSchema(tool.parameters) as JsonSchemaLike;
 			return {
 				type: "function",
 				function: {

@@ -1,5 +1,4 @@
-import type { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import * as z from "zod";
 import type { Message, Provider, Tool } from "../types.js";
 
 type JsonSchemaLike = {
@@ -113,20 +112,8 @@ export const OpenRouter: Provider = {
 		);
 
 		const toolsFormatted = tools?.map((tool: Tool) => {
-			// For OpenRouter, we need to transform the Zod schema to JSON Schema
-			// This is a simple approach for JSON schema generation
-			// Access the Zod object using type assertion
-			const zodObj = tool.parameters as z.ZodObject<z.ZodRawShape>;
-
-			// Extract shape from the Zod object type
-			const shape = zodObj._def?.shape ? zodObj._def.shape : {};
-
-			// Get field names (currently not used; kept for clarity)
-			const fields = typeof shape === "function" ? shape() : shape;
-			const _fieldNames = Object.keys(fields || {});
-
-			// Convert to JSON schema
-			const jsonSchema = zodToJsonSchema(tool.parameters) as JsonSchemaLike;
+			// Convert to JSON schema using Zod 4's built-in method
+			const jsonSchema = z.toJSONSchema(tool.parameters) as JsonSchemaLike;
 
 			// Check if we're using Cerebras provider with strict mode
 			const providerList = modelOptions?.provider?.only || [];

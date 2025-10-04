@@ -1,6 +1,6 @@
 # ailib
 
-A lightweight AI client library for Node.js that provides a simple interface for working with AI models through OpenRouter.
+A lightweight AI client library for Node.js that provides a simple interface for working with AI models through OpenRouter and Ollama.
 
 ## Features
 
@@ -9,7 +9,7 @@ A lightweight AI client library for Node.js that provides a simple interface for
 - Tool calling support
 - TypeScript support with proper typing
 - Modern async/await API
-- Support for OpenRouter API (extensible for other providers)
+- Support for OpenRouter and Ollama providers
 - Model pricing and cost tracking
 - Configurable model options
 - Support for model reasoning output
@@ -23,12 +23,13 @@ npm install @markwylde/ailib
 ## Usage
 
 ```ts
-import { createThread, OpenRouter } from '@markwylde/ailib';
+import { createThread, OpenRouter, Ollama } from '@markwylde/ailib';
 import { z } from 'zod';
 
 // Create a thread
 const ai = createThread({
-  provider: OpenRouter,
+  // Choose your provider
+  provider: OpenRouter, // or: Ollama
   model: 'anthropic/claude-3-sonnet',
   messages: [
     { role: 'system', content: 'You are a helpful assistant.' },
@@ -43,7 +44,8 @@ const ai = createThread({
       return `The weather in ${location} is sunny.`;
     }
   }],
-  apiKey: process.env.OPENROUTER_API_KEY,
+  // For OpenRouter pass your API key. For Ollama you can pass an empty string.
+  apiKey: process.env.OPENROUTER_API_KEY || "",
   modelOptions: {
     temperature: 0.7,
     max_tokens: 1000,
@@ -204,7 +206,7 @@ Then open your browser to http://localhost:5173
 ## Requirements
 
 - Node.js 18 or higher
-- An OpenRouter API key
+- Either an OpenRouter API key, or a running Ollama server (defaults to `http://localhost:11434` or set `OLLAMA_HOST`)
 
 ## Development
 

@@ -18,7 +18,7 @@ async function main() {
 	// const model = "qwen/qwen3-30b-a3b";
 	// const model = "meta-llama/llama-3/.3-70b-instruct:free";
 	// const model = "google/gemini-flash-1.5-8b";
-	const model = "google/gemini-2.5-flash-preview:thinking";
+	const model = "qwen/qwen3-14b";
 
 	console.log(`Creating thread with model: ${model}`);
 	console.log(
@@ -56,8 +56,6 @@ async function main() {
 	});
 
 	stream.on("data", ([chunk, _message]) => {
-		process.stdout.write(chunk);
-		// console.log(`Message so far: ${JSON.stringify(message, null, 2)}`);
 		process.stdout.write(chunk);
 	});
 

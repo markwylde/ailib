@@ -26,7 +26,7 @@ export interface ToolCall {
 export interface Tool {
 	name: string;
 	description: string;
-	parameters: z.ZodType<unknown, z.ZodTypeDef>;
+	parameters: z.ZodType;
 	handler: (args: Record<string, unknown>) => Promise<string>;
 }
 

@@ -1,4 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import {
+	type ComponentPropsWithoutRef,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeExternalLinks from "rehype-external-links";
 import rehypeHighlight from "rehype-highlight";
@@ -14,6 +19,69 @@ import {
 	getMessages,
 	sendMessage,
 } from "./services/ai";
+
+type MarkdownContentProps = {
+	children: string;
+};
+
+function MarkdownContent({ children }: MarkdownContentProps) {
+	return (
+		<ReactMarkdown
+			remarkPlugins={[remarkGfm]}
+			rehypePlugins={[
+				rehypeRaw,
+				rehypeSanitize,
+				rehypeHighlight,
+				rehypeSlug,
+				[
+					rehypeExternalLinks,
+					{ target: "_blank", rel: ["nofollow", "noopener", "noreferrer"] },
+				],
+			]}
+			components={{
+				li: ({
+					className,
+					...props
+				}: {
+					className?: string;
+					ordered?: boolean;
+				} & ComponentPropsWithoutRef<"li">) => {
+					const listItemClass = `custom-list-item ${props.ordered ? "ordered" : "unordered"} ${className || ""}`;
+
+					if (props.ordered) {
+						return (
+							<li
+								className={listItemClass}
+								style={{ color: "var(--list-number-color)" }}
+								{...props}
+							/>
+						);
+					}
+
+					return <li className={listItemClass} {...props} />;
+				},
+				ul: ({ className, ...props }) => (
+					<ul className={`custom-ul ${className || ""}`} {...props} />
+				),
+				ol: ({ className, ...props }) => (
+					<ol className={`custom-ol ${className || ""}`} {...props} />
+				),
+				h3: ({ ...props }) => <h3 className="custom-h3" {...props} />,
+				code: ({
+					className,
+					children: codeChildren,
+					...props
+				}: ComponentPropsWithoutRef<"code">) => (
+					<code className={className} {...props}>
+						{codeChildren}
+					</code>
+				),
+			}}
+		>
+			{children}
+		</ReactMarkdown>
+	);
+}
 
 function App() {
 	const [inputText, setInputText] = useState("");
@@ -149,71 +217,6 @@ function App() {
 		}
 		return "No reasoning available for this message.";
 	};
-
-	// Define the components to be rendered
-	const MarkdownContent = ({ children }: { children: string }) => (
-		<ReactMarkdown
-			remarkPlugins={[remarkGfm]}
-			rehypePlugins={[
-				rehypeRaw,
-				rehypeSanitize,
-				rehypeHighlight,
-				rehypeSlug,
-				[
-					rehypeExternalLinks,
-					{ target: "_blank", rel: ["nofollow", "noopener", "noreferrer"] },
-				],
-			]}
-			components={{
-				// Override how list items render
-				li: ({
-					className,
-					...props
-				}: {
-					className?: string;
-					ordered?: boolean;
-				} & React.ComponentPropsWithoutRef<"li">) => {
-					const listItemClass = `custom-list-item ${props.ordered ? "ordered" : "unordered"} ${className || ""}`;
-
-					if (props.ordered) {
-						return (
-							<li
-								className={listItemClass}
-								style={{ color: "var(--list-number-color)" }}
-								{...props}
-							/>
-						);
-					}
-
-					return <li className={listItemClass} {...props} />;
-				},
-				// Override how unordered lists render
-				ul: ({ className, ...props }) => (
-					<ul className={`custom-ul ${className || ""}`} {...props} />
-				),
-				// Override how ordered lists render
-				ol: ({ className, ...props }) => (
-					<ol className={`custom-ol ${className || ""}`} {...props} />
-				),
-				// Override h3 for proper styling
-				h3: ({ ...props }) => <h3 className="custom-h3" {...props} />,
-				// Better code handling
-				code: ({
-					className,
-					children,
-					...props
-				}: React.ComponentPropsWithoutRef<"code">) => {
-					return (
-						<code className={className} {...props}>
-							{children}
-						</code>
-					);
-				},
-			}}
-		>
-			{children}
-		</ReactMarkdown>
-	);
 
 	const handleEditMessage = (index: number) => {
 		setEditingMessageIndex(index);

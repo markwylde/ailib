@@ -5,6 +5,43 @@ type JsonSchemaLike = {
 	[key: string]: unknown;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+type OllamaToolDefinition = {
+	type: "function";
+	function: {
+		name: string;
+		description: string;
+		parameters: JsonSchemaLike;
+	};
+};
+
+interface OllamaRequestBody {
+	model: string;
+	messages: OllamaChatMessage[];
+	stream: boolean;
+	tools?: OllamaToolDefinition[];
+	format?: unknown;
+	think?: boolean;
+	options?: Record<string, unknown>;
+}
+
+interface OllamaChunkMessage {
+	content?: unknown;
+	tool_calls?: Array<{
+		function: { name: string; arguments: unknown };
+	}>;
+}
+
+interface OllamaStreamChunk {
+	message?: OllamaChunkMessage;
+	done?: boolean;
+	prompt_eval_count?: number;
+	eval_count?: number;
+}
+
 interface OllamaChatMessage {
 	role: string;
 	content: string;
@@ -63,47 +100,53 @@ export const Ollama: Provider = {
 			},
 		);
 
-		const toolsFormatted = tools?.map((tool: Tool) => {
-			const jsonSchema = z.toJSONSchema(tool.parameters) as JsonSchemaLike;
-			return {
-				type: "function",
-				function: {
-					name: tool.name,
-					description: tool.description,
-					parameters: jsonSchema,
-				},
-			};
-		});
+		const toolsFormatted: OllamaToolDefinition[] =
+			tools?.map((tool: Tool) => {
+				const jsonSchema = z.toJSONSchema(tool.parameters) as JsonSchemaLike;
+				return {
+					type: "function",
+					function: {
+						name: tool.name,
+						description: tool.description,
+						parameters: jsonSchema,
+					},
+				};
+			}) ?? [];
 
-		const body: Record<string, unknown> = {
+		const body: OllamaRequestBody = {
 			model,
 			messages: ollamaMessages,
 			stream: true,
-			tools: (tools?.length || 0) > 0 ? toolsFormatted : undefined,
 		};
+		if (toolsFormatted.length) {
+			body.tools = toolsFormatted;
+		}
 
 		if (modelOptions) {
 			if (modelOptions.response_format?.type === "json_schema") {
-				body.format = (modelOptions.response_format.json_schema as any).schema;
+				body.format = modelOptions.response_format.json_schema?.schema;
 			}
 
 			if (modelOptions.reasoning?.enabled) {
-				(body as any).think = true;
+				body.think = true;
 			}
 
 			const genOptions: Record<string, unknown> = {};
 			if (modelOptions.temperature !== undefined)
 				genOptions.temperature = modelOptions.temperature;
-			if (modelOptions.top_p !== undefined) genOptions.top_p = modelOptions.top_p;
-			if (modelOptions.top_k !== undefined) genOptions.top_k = modelOptions.top_k;
-			if (modelOptions.min_p !== undefined) genOptions.min_p = modelOptions.min_p;
+			if (modelOptions.top_p !== undefined)
+				genOptions.top_p = modelOptions.top_p;
+			if (modelOptions.top_k !== undefined)
+				genOptions.top_k = modelOptions.top_k;
+			if (modelOptions.min_p !== undefined)
+				genOptions.min_p = modelOptions.min_p;
 			if (modelOptions.seed !== undefined) genOptions.seed = modelOptions.seed;
 			if (modelOptions.max_tokens !== undefined)
 				genOptions.num_predict = modelOptions.max_tokens;
 			if (modelOptions.repetition_penalty !== undefined)
 				genOptions.repeat_penalty = modelOptions.repetition_penalty;
 
-			if (Object.keys(genOptions).length) (body as any).options = genOptions;
+			if (Object.keys(genOptions).length) body.options = genOptions;
 		}
 
 		const baseUrl = process.env.OLLAMA_HOST || "http://localhost:11434";
@@ -166,7 +209,9 @@ export const Ollama: Provider = {
 		};
 		if (signal) {
 			if ((signal as AbortSignal).aborted) onAbort();
-			(signal as AbortSignal).addEventListener("abort", onAbort, { once: true });
+			(signal as AbortSignal).addEventListener("abort", onAbort, {
+				once: true,
+			});
 		}
 
 		try {
@@ -181,25 +226,39 @@ export const Ollama: Provider = {
 				for (const line of lines) {
 					const trimmed = line.trim();
 					if (!trimmed) continue;
-					let data: any;
+					let parsed: unknown;
 					try {
-						data = JSON.parse(trimmed);
+						parsed = JSON.parse(trimmed);
 					} catch {
 						continue;
 					}
 
-					if (data.message?.content) {
-						const piece = String(data.message.content);
+					if (!isRecord(parsed)) {
+						continue;
+					}
+					const data = parsed as OllamaStreamChunk;
+
+					const message = isRecord(data.message)
+						? (data.message as OllamaChunkMessage)
+						: undefined;
+
+					if (message?.content !== undefined) {
+						const piece = String(message.content);
 						if (strict && !emittedToolCall) {
 							preToolBuffer += piece;
 							continue;
 						}
 
-						if (!emittedToolCall && (inToolCallTag || piece.includes("<tool_call>"))) {
+						if (
+							!emittedToolCall &&
+							(inToolCallTag || piece.includes("<tool_call>"))
+						) {
 							inToolCallTag = true;
 							toolCallBuf += piece;
 							if (toolCallBuf.includes("</tool_call>")) {
-								const m = toolCallBuf.match(/<tool_call>([\s\S]*?)<\/tool_call>/i);
+								const m = toolCallBuf.match(
+									/<tool_call>([\s\S]*?)<\/tool_call>/i,
+								);
 								const inner = (m?.[1] || "").trim();
 								try {
 									const obj = JSON.parse(inner);
@@ -211,8 +270,7 @@ export const Ollama: Provider = {
 											emittedToolCall = true;
 										}
 									}
-								} catch {
-								}
+								} catch {}
 								inToolCallTag = false;
 								toolCallBuf = "";
 							}
@@ -222,7 +280,11 @@ export const Ollama: Provider = {
 						const trimmed = piece.trim();
 
 						if (!strict) {
-							if (trimmed === "json" || trimmed === "```" || /^```json$/i.test(trimmed)) {
+							if (
+								trimmed === "json" ||
+								trimmed === "```" ||
+								/^```json$/i.test(trimmed)
+							) {
 								continue;
 							}
 						}
@@ -237,29 +299,37 @@ export const Ollama: Provider = {
 						if (!strict && inRawJson) {
 							rawJsonBuf += piece;
 							for (const c of piece) {
-								if (c === '{') rawJsonDepth++;
-								if (c === '}') rawJsonDepth--;
+								if (c === "{") rawJsonDepth++;
+								if (c === "}") rawJsonDepth--;
 							}
 							if (rawJsonDepth <= 0) {
 								const jsonText = rawJsonBuf.trim();
 								try {
 									const obj = JSON.parse(jsonText);
-									const name = obj?.name || obj?.function?.name || obj?.function_name;
+									const name =
+										obj?.name || obj?.function?.name || obj?.function_name;
 									const args =
-										obj?.arguments ?? obj?.function?.arguments ?? obj?.args ?? {};
+										obj?.arguments ??
+										obj?.function?.arguments ??
+										obj?.args ??
+										{};
 									if (name && typeof name === "string") {
 										if (name.toLowerCase() === "response") {
 											const msg =
 												(typeof args === "string" && args) ||
 												(args && (args.message || args.text || args.content)) ||
-												(obj.response || obj.message || obj.text || obj.content) ||
+												obj.response ||
+												obj.message ||
+												obj.text ||
+												obj.content ||
 												"";
 											if (typeof msg === "string" && msg) {
 												assistantMessage.content += msg;
 												yield [msg, assistantMessage];
 											}
 										} else {
-											if (!assistantMessage.tool_calls) assistantMessage.tool_calls = [];
+											if (!assistantMessage.tool_calls)
+												assistantMessage.tool_calls = [];
 											assistantMessage.tool_calls.push({
 												id: "",
 												type: "function",
@@ -268,8 +338,7 @@ export const Ollama: Provider = {
 											yield ["", assistantMessage];
 										}
 									}
-								} catch {
-								}
+								} catch {}
 								inRawJson = false;
 								rawJsonBuf = "";
 								rawJsonDepth = 0;
@@ -277,15 +346,18 @@ export const Ollama: Provider = {
 							continue;
 						}
 
-						if (!strict && !emittedToolCall && (
+						if (
+							!strict &&
+							!emittedToolCall &&
 							trimmed.startsWith("{") &&
 							/"name"\s*:\s*"/.test(trimmed) &&
-							/"arguments"\s*:\s*[{\[]/i.test(trimmed) &&
+							/"arguments"\s*:\s*[{[]/i.test(trimmed) &&
 							!/"response"\s*:\s*"/i.test(trimmed)
-						)) {
+						) {
 							try {
 								const obj = JSON.parse(trimmed);
-								const name = obj?.name || obj?.function?.name || obj?.function_name;
+								const name =
+									obj?.name || obj?.function?.name || obj?.function_name;
 								const args =
 									obj?.arguments ?? obj?.function?.arguments ?? obj?.args ?? {};
 								if (name && typeof name === "string") {
@@ -293,7 +365,10 @@ export const Ollama: Provider = {
 										const msg =
 											(typeof args === "string" && args) ||
 											(args && (args.message || args.text || args.content)) ||
-											(obj.response || obj.message || obj.text || obj.content) ||
+											obj.response ||
+											obj.message ||
+											obj.text ||
+											obj.content ||
 											"";
 										if (typeof msg === "string" && msg) {
 											assistantMessage.content += msg;
@@ -312,14 +387,17 @@ export const Ollama: Provider = {
 								rawJsonBuf = piece;
 								rawJsonDepth = 0;
 								for (const c of piece) {
-									if (c === '{') rawJsonDepth++;
-									if (c === '}') rawJsonDepth--;
+									if (c === "{") rawJsonDepth++;
+									if (c === "}") rawJsonDepth--;
 								}
 								continue;
 							}
 						}
 
-						if ((inFencedJSON || /```(?:json)?/i.test(piece)) && (emittedToolCall || !strict)) {
+						if (
+							(inFencedJSON || /```(?:json)?/i.test(piece)) &&
+							(emittedToolCall || !strict)
+						) {
 							inFencedJSON = true;
 							fencedBuf += piece;
 							if (/```/i.test(piece)) {
@@ -327,20 +405,24 @@ export const Ollama: Provider = {
 								const inner = (m?.[1] || "").trim();
 								try {
 									const obj = JSON.parse(inner);
-									const msg = obj?.response || obj?.message || obj?.text || obj?.content;
+									const msg =
+										obj?.response || obj?.message || obj?.text || obj?.content;
 									if (typeof msg === "string" && msg) {
 										assistantMessage.content += msg;
 										yield [msg, assistantMessage];
 									}
-								} catch {
-								}
+								} catch {}
 								inFencedJSON = false;
 								fencedBuf = "";
 							}
 							continue;
 						}
 
-						if ((emittedToolCall || !strict) && trimmed.startsWith("{") && /"response"\s*:\s*"/i.test(trimmed)) {
+						if (
+							(emittedToolCall || !strict) &&
+							trimmed.startsWith("{") &&
+							/"response"\s*:\s*"/i.test(trimmed)
+						) {
 							try {
 								const obj = JSON.parse(trimmed);
 								if (obj && typeof obj.response === "string") {
@@ -354,8 +436,8 @@ export const Ollama: Provider = {
 									rawJsonBuf = piece;
 									rawJsonDepth = 0;
 									for (const c of piece) {
-										if (c === '{') rawJsonDepth++;
-										if (c === '}') rawJsonDepth--;
+										if (c === "{") rawJsonDepth++;
+										if (c === "}") rawJsonDepth--;
 									}
 									continue;
 								}
@@ -366,11 +448,8 @@ export const Ollama: Provider = {
 						yield [piece, assistantMessage];
 					}
 
-					if (data.message?.tool_calls && !emittedToolCall) {
-						const tc = data.message.tool_calls as Array<{
-							function: { name: string; arguments: unknown };
-						}>;
-						for (const call of tc) {
+					if (Array.isArray(message?.tool_calls) && !emittedToolCall) {
+						for (const call of message.tool_calls) {
 							const name = call.function?.name || "";
 							const args = call.function?.arguments ?? {};
 							addToolCall(name, args);
@@ -391,13 +470,19 @@ export const Ollama: Provider = {
 						assistantMessage.cost = 0;
 						assistantMessage.totalCost = 0;
 
-						if (!strict && !emittedToolCall && (!assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0) && tools?.length) {
+						if (
+							!strict &&
+							!emittedToolCall &&
+							(!assistantMessage.tool_calls ||
+								assistantMessage.tool_calls.length === 0) &&
+							tools?.length
+						) {
 							const raw = (assistantMessage.content || "").trim();
 							let jsonText = raw;
 							const fence = jsonText.match(/```(?:json)?\n([\s\S]*?)```/i);
-							if (fence && fence[1]) jsonText = fence[1].trim();
+							if (fence?.[1]) jsonText = fence[1].trim();
 							const tag = raw.match(/<tool_call>([\s\S]*?)<\/tool_call>/i);
-							if (tag && tag[1]) jsonText = tag[1].trim();
+							if (tag?.[1]) jsonText = tag[1].trim();
 							try {
 								const obj = JSON.parse(jsonText);
 								const name = obj?.name || obj?.function?.name;
@@ -420,19 +505,25 @@ export const Ollama: Provider = {
 										emittedToolCall = true;
 									}
 								}
-							} catch {
-							}
+							} catch {}
 						}
 
-						if (strict && !emittedToolCall && preToolBuffer.trim() && tools?.length) {
+						if (
+							strict &&
+							!emittedToolCall &&
+							preToolBuffer.trim() &&
+							tools?.length
+						) {
 							const raw = preToolBuffer.trim();
 							let jsonText = raw;
 							const fence = raw.match(/```(?:json)?\n([\s\S]*?)```/i);
-							if (fence && fence[1]) jsonText = fence[1].trim();
+							if (fence?.[1]) jsonText = fence[1].trim();
 							try {
 								const obj = JSON.parse(jsonText);
-								const name = obj?.name || obj?.function?.name || obj?.function_name;
-								const args = obj?.arguments ?? obj?.function?.arguments ?? obj?.args ?? {};
+								const name =
+									obj?.name || obj?.function?.name || obj?.function_name;
+								const args =
+									obj?.arguments ?? obj?.function?.arguments ?? obj?.args ?? {};
 								if (name && typeof name === "string") {
 									assistantMessage.tool_calls = [
 										{
@@ -449,18 +540,14 @@ export const Ollama: Provider = {
 									yield ["", assistantMessage];
 									emittedToolCall = true;
 								}
-							} catch {
-							}
+							} catch {}
 						}
 
-						if (
-							assistantMessage.content &&
-							assistantMessage.content.trim().startsWith("{")
-						) {
+						if (assistantMessage.content?.trim().startsWith("{")) {
 							const raw = assistantMessage.content.trim();
 							let jsonText = raw;
 							const fence = raw.match(/```(?:json)?\n([\s\S]*?)```/i);
-							if (fence && fence[1]) jsonText = fence[1].trim();
+							if (fence?.[1]) jsonText = fence[1].trim();
 							try {
 								const obj = JSON.parse(jsonText);
 								if (
@@ -471,8 +558,7 @@ export const Ollama: Provider = {
 									assistantMessage.content = obj.response;
 									yield [assistantMessage.content, assistantMessage];
 								}
-							} catch {
-							}
+							} catch {}
 						}
 
 						if (strict && !emittedToolCall && preToolBuffer.trim()) {
@@ -484,8 +570,7 @@ export const Ollama: Provider = {
 				}
 			}
 		} finally {
-			if (signal)
-				(signal as AbortSignal).removeEventListener("abort", onAbort);
+			if (signal) (signal as AbortSignal).removeEventListener("abort", onAbort);
 			try {
 				reader.releaseLock();
 			} catch {}

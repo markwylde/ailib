@@ -256,6 +256,7 @@ export const OpenRouter: Provider = {
 		const reader = response.body.getReader();
 		const decoder = new TextDecoder();
 		let buffer = "";
+		let generationId: string | null = null;
 		const assistantMessage: Message = {
 			role: "assistant",
 			content: "",
@@ -298,6 +299,11 @@ export const OpenRouter: Provider = {
 
 						const data = JSON.parse(jsonStr);
 
+						// Capture generation ID from first chunk
+						if (data.id && !generationId) {
+							generationId = data.id;
+						}
+
 						if (data.choices?.[0]) {
 							const choice = data.choices[0];
 
@@ -324,22 +330,21 @@ export const OpenRouter: Provider = {
 										totalCost =
 											promptTokens * pricing.promptPrice + completionCost;
 
-										// Use fixed-point dollar formatting for message costs
+										// Update message costs
 										assistantMessage.tokens = completionTokens;
-										assistantMessage.cost = Number(completionCost.toFixed(6));
+										assistantMessage.cost = completionCost;
 										assistantMessage.totalTokens = totalTokens;
-										assistantMessage.totalCost = Number(totalCost.toFixed(6));
+										assistantMessage.totalCost = totalCost;
 									}
 								}
 							}
 
 							// Even if usage isn't in this chunk, still update the message with current values
 							assistantMessage.tokens = completionTokens;
-							assistantMessage.cost = Number(
-								(completionTokens * pricing.completionPrice).toFixed(6),
-							);
+							assistantMessage.cost =
+								completionTokens * pricing.completionPrice;
 							assistantMessage.totalTokens = totalTokens;
-							assistantMessage.totalCost = Number(totalCost.toFixed(6));
+							assistantMessage.totalCost = totalCost;
 
 							// Process reasoning data from the model
 							if (choice.delta?.reasoning) {
@@ -406,13 +411,73 @@ export const OpenRouter: Provider = {
 			} catch {}
 		}
 
-		// Make sure the final message has the token usage and cost
-		if (assistantMessage.tokens === 0 && completionTokens > 0) {
-			assistantMessage.tokens = completionTokens;
-			const completionCost = completionTokens * pricing.completionPrice;
-			assistantMessage.cost = Number(completionCost.toFixed(6));
-			assistantMessage.totalTokens = totalTokens;
-			assistantMessage.totalCost = Number(totalCost.toFixed(6));
+		// Fetch actual cost from generation endpoint with retry
+		if (!generationId) {
+			throw new Error(
+				"OpenRouter did not include a generation id in the stream response",
+			);
 		}
+
+		const maxAttempts = 5;
+		const baseDelayMs = 500;
+		let lastErrorMessage = "";
+
+		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+			try {
+				const genResponse = await fetch(
+					`https://openrouter.ai/api/v1/generation?id=${generationId}`,
+					{
+						headers: {
+							Authorization: `Bearer ${apiKey}`,
+						},
+					},
+				);
+
+				if (genResponse.ok) {
+					const genData = await genResponse.json();
+					if (genData.data) {
+						// Use native tokens and actual cost from generation endpoint
+						const nativePromptTokens = genData.data.native_tokens_prompt || 0;
+						const nativeCompletionTokens =
+							genData.data.native_tokens_completion || 0;
+						const actualTotalCost = genData.data.total_cost || 0;
+
+						assistantMessage.tokens = nativeCompletionTokens;
+						assistantMessage.cost =
+							nativeCompletionTokens * pricing.completionPrice;
+						assistantMessage.totalTokens =
+							nativePromptTokens + nativeCompletionTokens;
+						assistantMessage.totalCost = actualTotalCost;
+						return;
+					}
+
+					lastErrorMessage = "Generation response missing data payload";
+				} else {
+					let bodyText = "";
+					try {
+						bodyText = await genResponse.text();
+					} catch (readError) {
+						bodyText = `Unable to read response body: ${
+							readError instanceof Error ? readError.message : String(readError)
+						}`;
+					}
+					lastErrorMessage = `HTTP ${genResponse.status} ${genResponse.statusText}: ${bodyText}`;
+				}
+			} catch (error) {
+				lastErrorMessage =
+					error instanceof Error ? error.message : String(error);
+			}
+
+			if (attempt < maxAttempts) {
+				const delay = baseDelayMs * 2 ** (attempt - 1);
+				await new Promise((resolve) => setTimeout(resolve, delay));
+			}
+		}
+
+		throw new Error(
+			`Failed to fetch OpenRouter generation ${generationId} after ${maxAttempts} attempts${
+				lastErrorMessage ? `: ${lastErrorMessage}` : ""
+			}`,
+		);
 	},
 };

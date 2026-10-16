@@ -32,16 +32,16 @@
 	"license": "MIT",
 	"type": "module",
 	"dependencies": {
-		"emittery": "^1.2.0",
-		"jsonrepair": "^3.13.1",
-		"zod": "^4.1.11"
+		"emittery": "^2.1.0",
+		"jsonrepair": "^3.15.0",
+		"zod": "^4.6.7"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.2.5",
-		"@types/node": "^24.6.2",
-		"dotenv": "^17.2.3",
-		"tsx": "4.20.6",
-		"typescript": "^5.9.3"
+		"@biomejs/biome": "2.5.15",
+		"@types/node": "^26.6.5",
+		"dotenv": "^18.0.8",
+		"tsx": "4.23.15",
+		"typescript": "^7.0.2"
 	},
 	"files": [
 		"dist"

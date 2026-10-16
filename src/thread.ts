@@ -189,7 +189,7 @@ export function createThread(options: ThreadOptions): Thread {
 						event: K,
 						listener: (data: EventTypes[K]) => void,
 					) => {
-						emitter.on(event, listener);
+						emitter.on(event, ({ data }) => listener(data as EventTypes[K]));
 						return generate;
 					},
 					cancel: () => {
